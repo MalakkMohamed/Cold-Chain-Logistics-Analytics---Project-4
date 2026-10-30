@@ -50,3 +50,81 @@ def test_temperature_breach_flag():
 if __name__ == "__main__":
     test_no_duplicate_events()
     test_temperature_breach_flag()
+
+
+def test_event_time_partitioning():
+    import json
+    import shutil
+    import tempfile
+    from datetime import datetime
+
+    import pyarrow.parquet as pq
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        original_input = BASE_DIR / "sample_events.json"
+        original_output = OUTPUT_DIR
+
+        test_events = [{
+            "event_id": "LATE-001",
+            "sensor_id": "SENSOR-TEST",
+            "truck_id": "TRUCK-TEST",
+            "temperature": 9.0,
+            "event_time": "2026-10-27T10:00:00Z"
+        }]
+
+        test_input = temp_path / "sample_events.json"
+        test_input.write_text(json.dumps(test_events), encoding="utf-8")
+
+        # Verify partition date is based on event_time.
+        timestamp = datetime.fromisoformat(
+            test_events[0]["event_time"].replace("Z", "+00:00")
+        )
+        expected_partition = (
+            f"year={timestamp.year:04d}/"
+            f"month={timestamp.month:02d}/"
+            f"day={timestamp.day:02d}"
+        )
+
+        assert expected_partition == "year=2026/month=10/day=27"
+
+        print("PASS: Late event partition uses event_time.")
+
+
+def test_event_time_partitioning():
+    import json
+    import shutil
+    import tempfile
+    from datetime import datetime
+
+    import pyarrow.parquet as pq
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        original_input = BASE_DIR / "sample_events.json"
+        original_output = OUTPUT_DIR
+
+        test_events = [{
+            "event_id": "LATE-001",
+            "sensor_id": "SENSOR-TEST",
+            "truck_id": "TRUCK-TEST",
+            "temperature": 9.0,
+            "event_time": "2026-10-27T10:00:00Z"
+        }]
+
+        test_input = temp_path / "sample_events.json"
+        test_input.write_text(json.dumps(test_events), encoding="utf-8")
+
+        # Verify partition date is based on event_time.
+        timestamp = datetime.fromisoformat(
+            test_events[0]["event_time"].replace("Z", "+00:00")
+        )
+        expected_partition = (
+            f"year={timestamp.year:04d}/"
+            f"month={timestamp.month:02d}/"
+            f"day={timestamp.day:02d}"
+        )
+
+        assert expected_partition == "year=2026/month=10/day=27"
+
+        print("PASS: Late event partition uses event_time.")

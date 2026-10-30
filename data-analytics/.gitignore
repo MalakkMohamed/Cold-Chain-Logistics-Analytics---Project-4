@@ -1,2 +1,4 @@
 # Generated local ETL output
 output/
+__pycache__/
+*.py[cod]
