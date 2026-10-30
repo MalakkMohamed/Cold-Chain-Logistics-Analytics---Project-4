@@ -1,4 +1,4 @@
-# Project 4 - Cold-Chain Logistics Analytics
+﻿# Project 4 - Cold-Chain Logistics Analytics
 
 ## Scenario
 
@@ -58,7 +58,7 @@ Follow the upstream prerequisites, publish sample temperature events, force a th
 ## Instructor hints
 
 - Ask students to distinguish event time from ingestion time and demonstrate a late event.
-- Ask: “What is the source of truth if the transformation job fails?” The raw S3 zone should remain replayable.
+- Ask: â€œWhat is the source of truth if the transformation job fails?â€ The raw S3 zone should remain replayable.
 - Require a duplicate-event test and an alert deduplication strategy so one sensor problem does not page the team repeatedly.
 - Check that IoT credentials are device-specific and that Athena queries use partitions to control cost.
 - Graduation checkpoint: submit a replay test, a schema-evolution decision, a cost-control report, and an incident runbook for a missing sensor.
@@ -134,3 +134,40 @@ Follow the upstream prerequisites, publish sample temperature events, force a th
 **Concepts:** Data pipeline testing, independent releases, observability, incident response.
 
 **Deliverable:** CI/CD workflow, operational dashboard, go-live checklist, and rollback drill.
+
+## Person 4 - Data Lake, Analytics & Delivery
+
+### Completed
+- Local JSON-to-Parquet ETL with Snappy compression.
+- Event validation and date partitioning.
+- Athena SQL queries prepared.
+- Data dictionary and schema evolution documentation.
+- Replay guide and missing sensor incident runbook.
+- Five local tests passed.
+- GitHub Actions CI passed.
+
+### AWS Work Completed
+- Kinesis stream created.
+- Raw and Curated S3 buckets created.
+- Firehose delivery stream configured.
+- Lambda alert function tested directly.
+- SNS email notification manually verified.
+- Glue database created.
+
+### Pending AWS Work
+- Glue Job creation (blocked by IAM permissions).
+- Glue Catalog tables.
+- Athena query execution.
+- End-to-end Kinesis-to-S3 validation.
+- AWS replay and late-event integration tests.
+
+### Other Pending Deliverables
+- Terraform configuration and validation.
+- Monthly and 3-year cost analysis.
+- Final architecture diagram.
+- Screenshots and final presentation/video.
+
+### Important Note
+The local ETL uses a 5 degrees C illustrative threshold, while the deployed Lambda uses 8 degrees C. The project team must confirm and standardize the threshold.
+
+
