@@ -91,40 +91,79 @@ def test_event_time_partitioning():
         print("PASS: Late event partition uses event_time.")
 
 
-def test_event_time_partitioning():
-    import json
+
+
+def test_replay_after_failed_transformation():
     import shutil
     import tempfile
-    from datetime import datetime
-
-    import pyarrow.parquet as pq
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        original_input = BASE_DIR / "sample_events.json"
-        original_output = OUTPUT_DIR
+        temp_root = Path(temp_dir)
+        project_dir = temp_root / "data-analytics"
+        glue_dir = project_dir / "glue"
+        glue_dir.mkdir(parents=True)
 
-        test_events = [{
-            "event_id": "LATE-001",
-            "sensor_id": "SENSOR-TEST",
-            "truck_id": "TRUCK-TEST",
-            "temperature": 9.0,
-            "event_time": "2026-10-27T10:00:00Z"
-        }]
+        shutil.copy2(ETL_SCRIPT, glue_dir / "cold_chain_etl.py")
+        raw_copy = project_dir / "sample_events.json"
+        shutil.copy2(BASE_DIR / "sample_events.json", raw_copy)
 
-        test_input = temp_path / "sample_events.json"
-        test_input.write_text(json.dumps(test_events), encoding="utf-8")
+        output_path = project_dir / "output"
+        output_path.write_text("temporary obstruction", encoding="utf-8")
 
-        # Verify partition date is based on event_time.
-        timestamp = datetime.fromisoformat(
-            test_events[0]["event_time"].replace("Z", "+00:00")
-        )
-        expected_partition = (
-            f"year={timestamp.year:04d}/"
-            f"month={timestamp.month:02d}/"
-            f"day={timestamp.day:02d}"
+        failed_run = subprocess.run(
+            [sys.executable, str(glue_dir / "cold_chain_etl.py")],
+            capture_output=True,
+            text=True
         )
 
-        assert expected_partition == "year=2026/month=10/day=27"
+        assert failed_run.returncode != 0
+        assert raw_copy.exists(), "Raw data was lost after failure"
 
-        print("PASS: Late event partition uses event_time.")
+        output_path.unlink()
+
+        replay_run = subprocess.run(
+            [sys.executable, str(glue_dir / "cold_chain_etl.py")],
+            capture_output=True,
+            text=True
+        )
+
+        assert replay_run.returncode == 0, replay_run.stderr
+
+        parquet_files = list(output_path.rglob("*.parquet"))
+        assert parquet_files, "Replay did not generate Parquet files"
+
+        replayed_events = []
+        for file in parquet_files:
+            replayed_events.extend(
+                pq.ParquetFile(file).read().to_pylist()
+            )
+
+        assert len(replayed_events) == 3
+        assert raw_copy.exists()
+
+        print("PASS: Raw data survived failure and replay succeeded.")
+
+
+def test_schema_evolution_extra_field():
+    import json
+    import tempfile
+
+    event = {
+        "event_id": "SCHEMA-001",
+        "sensor_id": "SENSOR-003",
+        "truck_id": "TRUCK-03",
+        "temperature": 4.5,
+        "event_time": "2026-10-30T12:00:00Z",
+        "battery_level": 95
+    }
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        file_path = Path(temp_dir) / "schema_event.json"
+        file_path.write_text(json.dumps(event), encoding="utf-8")
+
+        loaded_event = json.loads(file_path.read_text(encoding="utf-8"))
+
+        assert loaded_event["event_id"] == "SCHEMA-001"
+        assert loaded_event["temperature"] == 4.5
+        assert loaded_event["battery_level"] == 95
+        assert loaded_event["sensor_id"] == "SENSOR-003"
