@@ -1,3 +1,4 @@
+
 name: Cold Chain Data Analytics CI
 
 on:
@@ -30,7 +31,17 @@ jobs:
           pip install pytest pyarrow==17.0.0
 
       - name: Run ETL tests
-        run: python -m pytest data-analytics/tests/test_etl.py -v
+        run: |
+          python -m pytest data-analytics/tests/test_etl.py -v --tb=short --junitxml=data-analytics/tests/test-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cold-chain-test-results
+          path: data-analytics/tests/test-results.xml
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Check Python syntax
         run: |
