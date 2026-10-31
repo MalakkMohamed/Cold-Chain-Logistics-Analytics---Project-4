@@ -29,10 +29,10 @@ ORDER BY year, month, day, truck_id;
 -- Requires a registered_sensors table containing sensor_id.
 SELECT
     s.sensor_id,
-    MAX(e.event_timestamp) AS last_seen
+    MAX(e.event_time) AS last_seen
 FROM registered_sensors s
 LEFT JOIN cold_chain_events e
     ON s.sensor_id = e.sensor_id
 GROUP BY s.sensor_id
-HAVING MAX(e.event_timestamp) IS NULL
-    OR MAX(e.event_timestamp) < date_add('minute', -5, current_timestamp);
+HAVING MAX(e.event_time) IS NULL
+    OR MAX(e.event_time) < date_add('minute', -5, current_timestamp);
