@@ -1,7 +1,7 @@
 
 import json
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -15,19 +15,33 @@ OUTPUT_DIR = BASE_DIR / "output"
 def transform_events():
     # Read sample sensor events
     with INPUT_FILE.open("r", encoding="utf-8") as file:
-        events = json.load(file)
+        content = file.read().strip()
+
+    # Support both JSON arrays/objects and JSON Lines
+    try:
+        events = json.loads(content)
+
+        if isinstance(events, dict):
+            events = [events]
+
+    except json.JSONDecodeError:
+        events = [
+            json.loads(line)
+            for line in content.splitlines()
+            if line.strip()
+        ]
 
     valid_events = []
 
-    for event in events:
-        required = [
-            "event_id",
-            "sensor_id",
-            "truck_id",
-            "temperature",
-            "event_time",
-        ]
+    required = [
+        "event_id",
+        "sensor_id",
+        "truck_id",
+        "temperature",
+        "event_time",
+    ]
 
+    for event in events:
         if any(event.get(key) is None for key in required):
             print(f"Skipping invalid event: {event.get('event_id')}")
             continue
@@ -36,17 +50,18 @@ def transform_events():
             event["event_time"].replace("Z", "+00:00")
         )
 
+        event["temperature"] = float(event["temperature"])
         event["event_timestamp"] = timestamp
         event["year"] = f"{timestamp.year:04d}"
         event["month"] = f"{timestamp.month:02d}"
         event["day"] = f"{timestamp.day:02d}"
         event["temperature_breach"] = (
-            float(event["temperature"]) > 5.0
+            event["temperature"] > 5.0
         )
 
         valid_events.append(event)
 
-    # Prepare output partitions based on event time
+    # Write Parquet files partitioned by event date
     for event in valid_events:
         partition = (
             OUTPUT_DIR
@@ -58,11 +73,10 @@ def transform_events():
 
         output_file = partition / "events.parquet"
 
-        # Read existing output to avoid duplicate event IDs
+        # Preserve existing events and avoid duplicate IDs
         existing = []
         if output_file.exists():
             existing = pq.ParquetFile(output_file).read().to_pylist()
-
         by_id = {row["event_id"]: row for row in existing}
         by_id[event["event_id"]] = event
 
